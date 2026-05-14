@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import { gsap } from 'gsap'
 import { cn } from '../../lib/utils'
 
 export default function TiltPanel({ children, className = '', intensity = 12 }) {
@@ -9,31 +8,48 @@ export default function TiltPanel({ children, className = '', intensity = 12 }) 
     const node = panelRef.current
     if (!node) return undefined
 
-    const rotateXTo = gsap.quickTo(node, 'rotateX', { duration: 0.4, ease: 'power2.out' })
-    const rotateYTo = gsap.quickTo(node, 'rotateY', { duration: 0.4, ease: 'power2.out' })
-    const yTo = gsap.quickTo(node, 'y', { duration: 0.4, ease: 'power2.out' })
-    const scaleTo = gsap.quickTo(node, 'scale', { duration: 0.4, ease: 'power2.out' })
+    let frameId = 0
+    let rotateX = 0
+    let rotateY = 0
+    let translateY = 0
+    let scale = 1
+
+    const applyTransform = () => {
+      frameId = 0
+      node.style.transform = `translate3d(0, ${translateY}px, 0) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${scale})`
+    }
+
+    const scheduleTransform = () => {
+      if (!frameId) {
+        frameId = window.requestAnimationFrame(applyTransform)
+      }
+    }
 
     const onMove = (event) => {
       const bounds = node.getBoundingClientRect()
       const px = (event.clientX - bounds.left) / bounds.width
       const py = (event.clientY - bounds.top) / bounds.height
-      rotateYTo((px - 0.5) * intensity)
-      rotateXTo((0.5 - py) * intensity)
-      yTo(-4)
-      scaleTo(1.01)
+      rotateY = (px - 0.5) * intensity
+      rotateX = (0.5 - py) * intensity
+      translateY = -4
+      scale = 1.01
+      scheduleTransform()
     }
 
     const onLeave = () => {
-      rotateXTo(0)
-      rotateYTo(0)
-      yTo(0)
-      scaleTo(1)
+      rotateX = 0
+      rotateY = 0
+      translateY = 0
+      scale = 1
+      scheduleTransform()
     }
 
     node.addEventListener('pointermove', onMove)
     node.addEventListener('pointerleave', onLeave)
     return () => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId)
+      }
       node.removeEventListener('pointermove', onMove)
       node.removeEventListener('pointerleave', onLeave)
     }

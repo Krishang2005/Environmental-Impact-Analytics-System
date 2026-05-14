@@ -36,11 +36,15 @@ public class AdminInitializer {
 
             Optional<User> existingAdmin = userRepository.findByEmail(defaultAdminEmail);
             User admin = existingAdmin.orElseGet(User::new);
+            boolean isNewAdmin = existingAdmin.isEmpty();
 
             admin.setName("Admin");
             admin.setEmail(defaultAdminEmail);
-            admin.setPassword(passwordEncoder.encode(defaultAdminPassword));
             admin.setRole(adminRole);
+
+            if (isNewAdmin) {
+                admin.setPassword(passwordEncoder.encode(defaultAdminPassword));
+            }
 
             if (admin.getSectorCategory() == null) {
                 admin.setSectorCategory(SectorCategory.COMMERCIAL);

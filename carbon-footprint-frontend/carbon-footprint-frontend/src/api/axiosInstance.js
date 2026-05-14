@@ -39,24 +39,9 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
-      const storedUser = localStorage.getItem('user')
-      let redirectTo = '/login'
-
-      if (storedUser) {
-        try {
-          const parsedUser = JSON.parse(storedUser)
-          if (parsedUser?.role === 'ROLE_ADMIN') {
-            redirectTo = '/admin/login'
-          }
-        } catch {
-          redirectTo = '/login'
-        }
-      }
-
       setApiAuthToken(null)
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      window.location.href = redirectTo
     }
     return Promise.reject(error)
   },

@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Float, Sphere, Torus } from '@react-three/drei'
-import { gsap } from 'gsap'
+import { Sphere, Torus } from '@react-three/drei'
 
 function ParticleField() {
   const pointsRef = useRef(null)
   const particles = useMemo(() => {
-    const count = 1400
+    const count = 520
     const positions = new Float32Array(count * 3)
     const scales = new Float32Array(count)
 
@@ -37,7 +36,7 @@ function ParticleField() {
           itemSize={3}
         />
       </bufferGeometry>
-      <pointsMaterial size={0.03} color="#34d399" transparent opacity={0.45} depthWrite={false} />
+      <pointsMaterial size={0.035} color="#34d399" transparent opacity={0.38} depthWrite={false} />
     </points>
   )
 }
@@ -47,42 +46,33 @@ function OrbitalShapes() {
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return
-    groupRef.current.rotation.y = clock.getElapsedTime() * 0.05
-    groupRef.current.rotation.x = Math.sin(clock.getElapsedTime() * 0.14) * 0.1
+    groupRef.current.rotation.y = clock.getElapsedTime() * 0.045
+    groupRef.current.rotation.x = Math.sin(clock.getElapsedTime() * 0.12) * 0.08
+    groupRef.current.position.y = 0.2 + Math.sin(clock.getElapsedTime() * 0.75) * 0.08
   })
 
   return (
     <group ref={groupRef} position={[2.2, 0.2, -2.2]}>
-      <Float speed={1.6} rotationIntensity={0.35} floatIntensity={0.75}>
-        <group>
-          <Sphere args={[1.1, 44, 44]}>
-            <meshStandardMaterial color="#065f46" emissive="#10b981" emissiveIntensity={0.3} transparent opacity={0.28} />
-          </Sphere>
-          <Sphere args={[1.18, 36, 36]}>
-            <meshBasicMaterial color="#6ee7b7" wireframe transparent opacity={0.16} />
-          </Sphere>
-        </group>
-      </Float>
-      <Float speed={1.2} rotationIntensity={0.8} floatIntensity={0.4}>
-        <Torus args={[1.9, 0.06, 22, 120]} rotation={[Math.PI / 2.8, 0, 0]}>
-          <meshStandardMaterial color="#2dd4bf" emissive="#2dd4bf" emissiveIntensity={0.45} transparent opacity={0.6} />
-        </Torus>
-      </Float>
-      <Float speed={1.35} rotationIntensity={0.5} floatIntensity={0.45}>
-        <Torus args={[1.52, 0.038, 18, 110]} rotation={[Math.PI / 1.95, 0, Math.PI / 3]}>
-          <meshStandardMaterial color="#84cc16" emissive="#34d399" emissiveIntensity={0.4} transparent opacity={0.38} />
-        </Torus>
-      </Float>
-      <Float speed={1.1} rotationIntensity={0.25} floatIntensity={0.4}>
-        <group position={[-1.75, -0.9, -0.5]} rotation={[0.15, 0.25, -0.45]}>
-          <Sphere args={[0.26, 20, 20]} scale={[0.72, 1.55, 0.6]}>
-            <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={0.45} transparent opacity={0.42} />
-          </Sphere>
-          <Sphere args={[0.14, 14, 14]} position={[0.14, -0.08, 0.04]} scale={[0.42, 1.2, 0.46]}>
-            <meshStandardMaterial color="#99f6e4" emissive="#2dd4bf" emissiveIntensity={0.3} transparent opacity={0.34} />
-          </Sphere>
-        </group>
-      </Float>
+      <Sphere args={[1.1, 28, 28]}>
+        <meshStandardMaterial color="#065f46" emissive="#10b981" emissiveIntensity={0.25} transparent opacity={0.24} />
+      </Sphere>
+      <Sphere args={[1.18, 24, 24]}>
+        <meshBasicMaterial color="#6ee7b7" wireframe transparent opacity={0.13} />
+      </Sphere>
+      <Torus args={[1.9, 0.055, 14, 72]} rotation={[Math.PI / 2.8, 0, 0]}>
+        <meshStandardMaterial color="#2dd4bf" emissive="#2dd4bf" emissiveIntensity={0.38} transparent opacity={0.52} />
+      </Torus>
+      <Torus args={[1.52, 0.035, 12, 64]} rotation={[Math.PI / 1.95, 0, Math.PI / 3]}>
+        <meshStandardMaterial color="#84cc16" emissive="#34d399" emissiveIntensity={0.32} transparent opacity={0.32} />
+      </Torus>
+      <group position={[-1.75, -0.9, -0.5]} rotation={[0.15, 0.25, -0.45]}>
+        <Sphere args={[0.26, 14, 14]} scale={[0.72, 1.55, 0.6]}>
+          <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={0.35} transparent opacity={0.36} />
+        </Sphere>
+        <Sphere args={[0.14, 10, 10]} position={[0.14, -0.08, 0.04]} scale={[0.42, 1.2, 0.46]}>
+          <meshStandardMaterial color="#99f6e4" emissive="#2dd4bf" emissiveIntensity={0.24} transparent opacity={0.3} />
+        </Sphere>
+      </group>
     </group>
   )
 }
@@ -106,23 +96,37 @@ function MouseGlowLayer() {
     if (!glowRef.current) return undefined
 
     const node = glowRef.current
-    const xTo = gsap.quickTo(node, 'left', { duration: 0.4, ease: 'power2.out' })
-    const yTo = gsap.quickTo(node, 'top', { duration: 0.4, ease: 'power2.out' })
+    let frameId = 0
+    let x = -200
+    let y = -200
+
+    const applyTransform = () => {
+      frameId = 0
+      node.style.transform = `translate3d(${x}px, ${y}px, 0)`
+    }
 
     const onMove = (event) => {
-      xTo(event.clientX - 160)
-      yTo(event.clientY - 160)
+      x = event.clientX - 160
+      y = event.clientY - 160
+      if (!frameId) {
+        frameId = window.requestAnimationFrame(applyTransform)
+      }
     }
 
     window.addEventListener('pointermove', onMove)
-    return () => window.removeEventListener('pointermove', onMove)
+    return () => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId)
+      }
+      window.removeEventListener('pointermove', onMove)
+    }
   }, [])
 
   return (
     <div
       ref={glowRef}
       className="pointer-events-none fixed z-[1] h-80 w-80 rounded-full bg-[radial-gradient(circle,rgba(16,185,129,0.22),rgba(13,148,136,0.06)_56%,transparent_72%)] blur-2xl"
-      style={{ left: '-200px', top: '-200px' }}
+      style={{ transform: 'translate3d(-200px, -200px, 0)' }}
     />
   )
 }
@@ -147,7 +151,11 @@ export default function CinematicBackground({ className = '', withMouseGlow = tr
         <div className="absolute right-[12%] top-[28%] h-52 w-28 rotate-[-12deg] rounded-[58%_42%_40%_60%/65%_62%_38%_35%] border border-emerald-200/25 bg-emerald-300/6" />
         <div className="absolute right-[9%] top-[33%] h-28 w-16 rotate-[14deg] rounded-[62%_38%_55%_45%/70%_66%_34%_30%] border border-teal-200/20 bg-teal-300/8" />
         <div className="absolute inset-0">
-          <Canvas camera={{ position: [0, 0, 8], fov: 55 }}>
+          <Canvas
+            camera={{ position: [0, 0, 8], fov: 55 }}
+            dpr={[0.8, 1.15]}
+            gl={{ antialias: false, powerPreference: 'low-power' }}
+          >
             <Lighting />
             <ParticleField />
             <OrbitalShapes />
