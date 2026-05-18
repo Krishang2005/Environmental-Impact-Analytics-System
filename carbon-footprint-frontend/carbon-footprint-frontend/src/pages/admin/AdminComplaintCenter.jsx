@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { AlertTriangle, Car, CheckCircle2, MapPin, Radar, Trash2 } from 'lucide-react'
+import { AlertTriangle, Car, CheckCircle2, MapPin, Radar, Send, Trash2 } from 'lucide-react'
 import { Badge, PageLoader, SectionHeader, StatCard } from '../../components/ui'
 import { communityApi } from '../../api/communityApi'
 import { adminApi } from '../../api/adminApi'
@@ -57,6 +57,19 @@ export default function AdminComplaintCenter() {
               : 'Complaint status refreshed',
       })
       toast.success(`Complaint marked ${status.replace('_', ' ').toLowerCase()}.`)
+      await loadData()
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  const handleBbmpEscalation = async (issue) => {
+    setUpdatingId(issue.id)
+    try {
+      await communityApi.escalateToBbmp(issue.id, 24)
+      toast.success('Complaint escalated to BBMP with a 24-hour response deadline.')
       await loadData()
     } catch (error) {
       toast.error(getErrorMessage(error))
@@ -344,6 +357,15 @@ export default function AdminComplaintCenter() {
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleBbmpEscalation(issue)}
+                      disabled={updatingId === issue.id || issue.status === 'ACTION_TAKEN' || issue.status === 'REJECTED'}
+                      className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100 transition hover:bg-cyan-500/20 disabled:opacity-60"
+                    >
+                      <Send className="h-4 w-4" />
+                      {updatingId === issue.id ? 'Sending...' : 'Escalate to BBMP (24h)'}
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleStatusUpdate(issue, 'UNDER_REVIEW')}

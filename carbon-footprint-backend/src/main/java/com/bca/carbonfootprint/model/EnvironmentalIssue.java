@@ -14,6 +14,9 @@ import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 @Entity
 @Table(name = "environmental_issue")
 public class EnvironmentalIssue {
@@ -84,7 +87,8 @@ public class EnvironmentalIssue {
     private String aiSummary;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(nullable = false, length = 40)
     private IssueStatus status;
 
     @Column(nullable = false)

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,6 +37,7 @@ import com.bca.carbonfootprint.repository.IssueStatusHistoryRepository;
 import com.bca.carbonfootprint.repository.IssueVoteRepository;
 import com.bca.carbonfootprint.repository.UserRepository;
 import com.bca.carbonfootprint.service.AdminActivityLogService;
+import com.bca.carbonfootprint.service.EmailService;
 import com.bca.carbonfootprint.service.NotificationService;
 import com.bca.carbonfootprint.service.RewardService;
 import com.bca.carbonfootprint.service.ZoneDetectorService;
@@ -66,6 +68,8 @@ public class CommunityController {
     private final ZoneDetectorService zoneDetectorService;
     private final AdminActivityLogService adminActivityLogService;
     private final NotificationService notificationService;
+    private final EmailService emailService;
+    private final String bbmpComplaintEmail;
 
     public CommunityController(
             EnvironmentalIssueRepository environmentalIssueRepository,
@@ -76,7 +80,9 @@ public class CommunityController {
             RewardService rewardService,
             ZoneDetectorService zoneDetectorService,
             AdminActivityLogService adminActivityLogService,
-            NotificationService notificationService) {
+            NotificationService notificationService,
+            EmailService emailService,
+            @Value("${app.bbmp.complaint-email:}") String bbmpComplaintEmail) {
         this.environmentalIssueRepository = environmentalIssueRepository;
         this.issueVoteRepository = issueVoteRepository;
         this.issueFollowerRepository = issueFollowerRepository;
@@ -86,6 +92,8 @@ public class CommunityController {
         this.zoneDetectorService = zoneDetectorService;
         this.adminActivityLogService = adminActivityLogService;
         this.notificationService = notificationService;
+        this.emailService = emailService;
+        this.bbmpComplaintEmail = bbmpComplaintEmail;
     }
 
     @GetMapping("/issues")
@@ -224,6 +232,62 @@ public class CommunityController {
                     "Issue marked resolved by admin"
             );
         }
+
+        return toResponse(saved, admin.getId());
+    }
+
+    @PostMapping("/issues/{id}/escalate-bbmp")
+    @PreAuthorize("hasRole('ADMIN')")
+    public EnvironmentalIssueResponse escalateToBbmp(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "24") int deadlineHours,
+            Principal principal) {
+        if (bbmpComplaintEmail == null || bbmpComplaintEmail.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "BBMP complaint email is not configured. Set BBMP_COMPLAINT_EMAIL or app.bbmp.complaint-email."
+            );
+        }
+
+        User admin = getLoggedUser(principal);
+        EnvironmentalIssue issue = environmentalIssueRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
+
+        IssueStatus previousStatus = issue.getStatus();
+        IssueStatus nextStatus = previousStatus == IssueStatus.SUBMITTED
+                ? IssueStatus.UNDER_REVIEW
+                : previousStatus;
+        LocalDateTime deadline = LocalDateTime.now().plusHours(Math.max(1, Math.min(72, deadlineHours)));
+
+        if (nextStatus != previousStatus) {
+            issue.setStatus(nextStatus);
+            issue.setResolvedAt(null);
+        }
+
+        EnvironmentalIssue saved = environmentalIssueRepository.save(issue);
+        String note = "Escalated to BBMP at " + bbmpComplaintEmail
+                + ". Requested response by " + deadline
+                + ". Admin must verify field action before marking action taken.";
+
+        try {
+            emailService.sendEmissionAlertEmail(
+                    bbmpComplaintEmail,
+                    "BBMP Escalation: Complaint #" + saved.getId() + " - " + saved.getTitle(),
+                    buildBbmpEscalationEmail(saved, admin, deadline)
+            );
+        } catch (Exception ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Could not send BBMP escalation email: " + ex.getMessage()
+            );
+        }
+
+        createHistory(saved, previousStatus, nextStatus, note, null, admin.getName());
+        adminActivityLogService.log(
+                admin.getEmail(),
+                "ISSUE_BBMP_ESCALATION",
+                "Escalated issue #" + saved.getId() + " to BBMP with deadline " + deadline
+        );
 
         return toResponse(saved, admin.getId());
     }
@@ -485,6 +549,38 @@ public class CommunityController {
             return null;
         }
         return value.trim().toUpperCase();
+    }
+
+    private String buildBbmpEscalationEmail(EnvironmentalIssue issue, User admin, LocalDateTime deadline) {
+        String coordinates = issue.getLatitude() != null && issue.getLongitude() != null
+                ? issue.getLatitude() + ", " + issue.getLongitude()
+                : "Not provided";
+        String zoneName = issue.getMappedZoneName() != null && !issue.getMappedZoneName().isBlank()
+                ? issue.getMappedZoneName()
+                : issue.getReporter().getZone() != null ? issue.getReporter().getZone().getName() : "Unassigned";
+
+        return "Dear BBMP Team,\n\n"
+                + "A civic complaint has been verified by the CarbonTrack Nexus admin dashboard and requires field action.\n\n"
+                + "Complaint ID: #" + issue.getId() + "\n"
+                + "Title: " + issue.getTitle() + "\n"
+                + "Type: " + issue.getIssueType().name() + "\n"
+                + "Priority: " + defaultString(issue.getAiPriority()) + "\n"
+                + "AI Score: " + safeText(issue.getAiScore()) + "/100\n"
+                + "Confidence: " + safeText(issue.getAiConfidenceScore()) + "/100\n"
+                + "Zone: " + zoneName + "\n"
+                + "Address / Landmark: " + defaultString(issue.getAddress()) + "\n"
+                + "Coordinates: " + coordinates + "\n"
+                + "Reported At: " + issue.getReportedAt() + "\n"
+                + "Response Requested By: " + deadline + "\n\n"
+                + "Description:\n" + issue.getDescription() + "\n\n"
+                + "Evidence is available in the CarbonTrack Nexus admin complaint dashboard. "
+                + "Please inspect the location, take corrective action, and share the action taken status.\n\n"
+                + "Escalated by: " + admin.getName() + " (" + admin.getEmail() + ")\n\n"
+                + "Regards,\nCarbonTrack Nexus Admin Team";
+    }
+
+    private String safeText(Number value) {
+        return value != null ? String.valueOf(value) : "N/A";
     }
 
     private String defaultString(String value) {

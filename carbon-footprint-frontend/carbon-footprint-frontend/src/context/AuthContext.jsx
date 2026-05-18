@@ -34,7 +34,7 @@ export function AuthProvider({ children }) {
       setToken(tokenOverride || 'cookie-session')
       return res.data
     } catch (error) {
-      if (error?.response?.status === 401) {
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
         clearSession()
       }
       return null
@@ -42,6 +42,8 @@ export function AuthProvider({ children }) {
   }, [clearSession, persistUser])
 
   useEffect(() => {
+    window.addEventListener('auth:session-expired', clearSession)
+
     const storedUser = localStorage.getItem('user')
     const storedToken = localStorage.getItem('token')
 
@@ -58,7 +60,8 @@ export function AuthProvider({ children }) {
     }
 
     refreshProfile(storedToken).finally(() => setLoading(false))
-  }, [refreshProfile])
+    return () => window.removeEventListener('auth:session-expired', clearSession)
+  }, [clearSession, refreshProfile])
 
   const login = useCallback((authData) => {
     const initialUser = {

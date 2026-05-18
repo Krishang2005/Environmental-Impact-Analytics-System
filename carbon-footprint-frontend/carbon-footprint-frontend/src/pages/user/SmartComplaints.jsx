@@ -46,8 +46,28 @@ const REPORT_MODES = {
   },
 }
 
+const MAX_EVIDENCE_DATA_URL_LENGTH = 2_500_000
+const MAX_PHOTO_UPLOAD_BYTES = 5 * 1024 * 1024
+const MAX_VIDEO_UPLOAD_BYTES = 20 * 1024 * 1024
+
 function formatScore(value) {
   return `${Math.round(Number(value || 0))}/100`
+}
+
+function createEvidenceDataUrl(canvas, initialQuality = 0.72) {
+  let quality = initialQuality
+  let dataUrl = canvas.toDataURL('image/jpeg', quality)
+
+  while (dataUrl.length > MAX_EVIDENCE_DATA_URL_LENGTH && quality > 0.42) {
+    quality -= 0.08
+    dataUrl = canvas.toDataURL('image/jpeg', quality)
+  }
+
+  return dataUrl
+}
+
+function isFileOverLimit(file, maxBytes) {
+  return file.size > maxBytes
 }
 
 export default function SmartComplaints() {
@@ -270,7 +290,7 @@ export default function SmartComplaints() {
 
       resolve({
         result,
-        evidenceDataUrl: snapshotCanvas.toDataURL('image/jpeg', 0.78),
+        evidenceDataUrl: createEvidenceDataUrl(snapshotCanvas, 0.72),
       })
     }
 
@@ -369,6 +389,11 @@ export default function SmartComplaints() {
       toast.error('Please choose a video file for analysis.')
       return
     }
+    if (isFileOverLimit(file, MAX_VIDEO_UPLOAD_BYTES)) {
+      toast.error('Video is too large. Please upload a video up to 20 MB.')
+      event.target.value = ''
+      return
+    }
 
     stopAnalysis()
     stopCamera()
@@ -423,6 +448,11 @@ export default function SmartComplaints() {
       toast.error('Please choose an image file for photo analysis.')
       return
     }
+    if (isFileOverLimit(file, MAX_PHOTO_UPLOAD_BYTES)) {
+      toast.error('Photo is too large. Please upload an image up to 5 MB.')
+      event.target.value = ''
+      return
+    }
 
     stopAnalysis()
     stopCamera()
@@ -468,7 +498,7 @@ export default function SmartComplaints() {
     canvas.width = 480
     canvas.height = 270
     context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
-    return canvas.toDataURL('image/jpeg', 0.72)
+    return createEvidenceDataUrl(canvas, 0.72)
   }
 
   const stopAnalysis = () => {

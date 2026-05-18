@@ -10,6 +10,9 @@ export const communityApi = {
   updateIssueStatus: (id, status, data = {}) =>
     api.put(`/api/community/issues/${id}/status?status=${status}`, data),
 
+  escalateToBbmp: (id, deadlineHours = 24) =>
+    api.post(`/api/community/issues/${id}/escalate-bbmp?deadlineHours=${deadlineHours}`),
+
   toggleUpvote: (id) => api.post(`/api/community/issues/${id}/upvote`),
 
   toggleFollow: (id) => api.post(`/api/community/issues/${id}/follow`),

@@ -42,6 +42,7 @@ api.interceptors.response.use(
       setApiAuthToken(null)
       localStorage.removeItem('token')
       localStorage.removeItem('user')
+      window.dispatchEvent(new Event('auth:session-expired'))
     }
     return Promise.reject(error)
   },
