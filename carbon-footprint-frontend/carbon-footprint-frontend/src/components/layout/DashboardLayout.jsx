@@ -14,7 +14,7 @@ export default function DashboardLayout() {
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-transparent">
-      <CinematicBackground />
+      <CinematicBackground scene={false} withMouseGlow={false} />
 
       <div className="pointer-events-none absolute inset-0 z-[1]">
         <div className="absolute left-[-10%] top-[18%] h-72 w-72 rounded-full bg-cyan-400/15 blur-[96px]" />

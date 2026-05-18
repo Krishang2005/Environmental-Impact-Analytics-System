@@ -22,6 +22,10 @@ const otpSchema = z.object({
   otp: z.string().min(4, 'Enter the OTP').max(10),
 })
 
+const isTimeoutError = (error) =>
+  error?.code === 'ECONNABORTED' ||
+  error?.message?.toLowerCase().includes('timeout')
+
 const modeConfig = {
   user: {
     brand: 'User Portal',
@@ -105,6 +109,12 @@ export default function LoginPortal({ mode = 'user' }) {
       toast.success(`Welcome back, ${res.data.name}!`)
       navigate(res.data.role === 'ROLE_ADMIN' ? '/admin/dashboard' : '/dashboard')
     } catch (err) {
+      if (mode === 'admin' && isTimeoutError(err)) {
+        setAdminEmail(data.email)
+        setOtpStep(true)
+        toast.error('Login request timed out, but the OTP may still arrive. Enter it here if you received it.')
+        return
+      }
       toast.error(getErrorMessage(err))
     } finally {
       setLoading(false)

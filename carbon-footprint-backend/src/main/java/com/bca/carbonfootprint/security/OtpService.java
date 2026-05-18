@@ -6,9 +6,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class OtpService {
@@ -20,7 +21,7 @@ public class OtpService {
     private boolean devOtpConsoleFallback;
 
     // In-memory storage
-    private final Map<String, OtpData> otpStorage = new HashMap<>();
+    private final Map<String, OtpData> otpStorage = new ConcurrentHashMap<>();
 
     // ================= GENERATE OTP =================
     public String generateOtp(String username) {
@@ -36,27 +37,31 @@ public class OtpService {
 
         otpStorage.put(username, otpData);
 
-        try {
-            // Send email
-            emailService.sendOtpEmail(username, otp);
-        } catch (Exception ex) {
-            System.err.println("OTP email send failed for " + username + ": " + ex.getMessage());
-            if (ex.getCause() != null) {
-                System.err.println("Mail root cause: " + ex.getCause().getMessage());
-            }
-            if (devOtpConsoleFallback) {
-                System.out.println("OTP email failed. DEV fallback is enabled.");
-                System.out.println("Use this OTP for " + username + ": " + otp);
-            } else {
-                otpStorage.remove(username);
-                throw new RuntimeException("Failed to send OTP email. Please check mail configuration.", ex);
-            }
-        }
+        sendOtpEmailAsync(username, otp);
 
         System.out.println("🔐 OTP stored for: " + username);
         System.out.println("📦 Current OTP storage keys: " + otpStorage.keySet());
 
         return otp;
+    }
+
+    private void sendOtpEmailAsync(String username, String otp) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                emailService.sendOtpEmail(username, otp);
+            } catch (Exception ex) {
+                System.err.println("OTP email send failed for " + username + ": " + ex.getMessage());
+                if (ex.getCause() != null) {
+                    System.err.println("Mail root cause: " + ex.getCause().getMessage());
+                }
+                if (devOtpConsoleFallback) {
+                    System.out.println("OTP email failed. DEV fallback is enabled.");
+                    System.out.println("Use this OTP for " + username + ": " + otp);
+                } else {
+                    otpStorage.remove(username);
+                }
+            }
+        });
     }
 
     // ================= VALIDATE OTP =================

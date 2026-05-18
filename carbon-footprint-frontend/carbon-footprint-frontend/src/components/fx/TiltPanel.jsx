@@ -7,6 +7,8 @@ export default function TiltPanel({ children, className = '', intensity = 12 }) 
   useEffect(() => {
     const node = panelRef.current
     if (!node) return undefined
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined
+    if (window.matchMedia?.('(pointer: coarse)').matches) return undefined
 
     let frameId = 0
     let rotateX = 0

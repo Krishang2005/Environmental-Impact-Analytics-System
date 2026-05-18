@@ -25,5 +25,28 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    build: {
+      modulePreload: false,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined
+            if (id.includes('@react-three') || id.includes('/three/') || id.includes('@pmndrs') || id.includes('troika-')) {
+              return 'vendor-3d'
+            }
+            if (id.includes('recharts') || id.includes('d3-')) {
+              return 'vendor-charts'
+            }
+            if (id.includes('framer-motion')) {
+              return 'vendor-motion'
+            }
+            if (id.includes('leaflet') || id.includes('react-leaflet')) {
+              return 'vendor-maps'
+            }
+            return undefined
+          },
+        },
+      },
+    },
   }
 })

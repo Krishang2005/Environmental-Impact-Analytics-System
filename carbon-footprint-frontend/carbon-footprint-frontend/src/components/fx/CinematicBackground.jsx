@@ -1,11 +1,27 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Sphere, Torus } from '@react-three/drei'
 
-function ParticleField() {
+function usePrefersReducedMotion() {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    if (!mediaQuery) return undefined
+
+    const updatePreference = () => setPrefersReducedMotion(mediaQuery.matches)
+    updatePreference()
+    mediaQuery.addEventListener('change', updatePreference)
+    return () => mediaQuery.removeEventListener('change', updatePreference)
+  }, [])
+
+  return prefersReducedMotion
+}
+
+function ParticleField({ animated = true }) {
   const pointsRef = useRef(null)
   const particles = useMemo(() => {
-    const count = 520
+    const count = animated ? 320 : 180
     const positions = new Float32Array(count * 3)
     const scales = new Float32Array(count)
 
@@ -18,9 +34,10 @@ function ParticleField() {
     }
 
     return { positions, scales }
-  }, [])
+  }, [animated])
 
   useFrame(({ clock }) => {
+    if (!animated) return
     if (!pointsRef.current) return
     pointsRef.current.rotation.y = clock.getElapsedTime() * 0.015
     pointsRef.current.rotation.x = Math.sin(clock.getElapsedTime() * 0.07) * 0.05
@@ -41,10 +58,11 @@ function ParticleField() {
   )
 }
 
-function OrbitalShapes() {
+function OrbitalShapes({ animated = true }) {
   const groupRef = useRef(null)
 
   useFrame(({ clock }) => {
+    if (!animated) return
     if (!groupRef.current) return
     groupRef.current.rotation.y = clock.getElapsedTime() * 0.045
     groupRef.current.rotation.x = Math.sin(clock.getElapsedTime() * 0.12) * 0.08
@@ -131,10 +149,19 @@ function MouseGlowLayer() {
   )
 }
 
-export default function CinematicBackground({ className = '', withMouseGlow = true }) {
+export default function CinematicBackground({
+  className = '',
+  withMouseGlow = true,
+  scene = true,
+  animated = true,
+}) {
+  const prefersReducedMotion = usePrefersReducedMotion()
+  const shouldAnimate = animated && !prefersReducedMotion
+  const shouldRenderScene = scene && !prefersReducedMotion
+
   return (
     <>
-      {withMouseGlow && <MouseGlowLayer />}
+      {withMouseGlow && shouldAnimate && <MouseGlowLayer />}
       <div className={`pointer-events-none fixed inset-0 z-0 overflow-hidden ${className}`}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_22%,rgba(16,185,129,0.24),transparent_36%),radial-gradient(circle_at_84%_8%,rgba(20,184,166,0.2),transparent_30%),radial-gradient(circle_at_68%_86%,rgba(132,204,22,0.16),transparent_36%),linear-gradient(120deg,#020b08_0%,#04100d_44%,#081713_100%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(110,231,183,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(94,234,212,0.06)_1px,transparent_1px)] bg-[size:56px_56px] opacity-25 [mask-image:radial-gradient(circle_at_center,black,transparent_74%)]" />
@@ -150,17 +177,20 @@ export default function CinematicBackground({ className = '', withMouseGlow = tr
         <div className="absolute -left-20 bottom-8 h-72 w-72 rounded-[60%_40%_52%_48%/48%_55%_45%_52%] bg-emerald-500/12 blur-3xl" />
         <div className="absolute right-[12%] top-[28%] h-52 w-28 rotate-[-12deg] rounded-[58%_42%_40%_60%/65%_62%_38%_35%] border border-emerald-200/25 bg-emerald-300/6" />
         <div className="absolute right-[9%] top-[33%] h-28 w-16 rotate-[14deg] rounded-[62%_38%_55%_45%/70%_66%_34%_30%] border border-teal-200/20 bg-teal-300/8" />
+        {shouldRenderScene && (
         <div className="absolute inset-0">
           <Canvas
             camera={{ position: [0, 0, 8], fov: 55 }}
-            dpr={[0.8, 1.15]}
+            dpr={[0.6, 1]}
+            frameloop={shouldAnimate ? 'always' : 'demand'}
             gl={{ antialias: false, powerPreference: 'low-power' }}
           >
             <Lighting />
-            <ParticleField />
-            <OrbitalShapes />
+            <ParticleField animated={shouldAnimate} />
+            <OrbitalShapes animated={shouldAnimate} />
           </Canvas>
         </div>
+        )}
       </div>
     </>
   )
