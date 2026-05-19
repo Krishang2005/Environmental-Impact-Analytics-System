@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="850" viewBox="0 0 1400 850" role="img" aria-labelledby="title desc">
+  <title id="title">Three-Tier System Architecture</title>
+  <desc id="desc">Architecture diagram showing Presentation Layer, Application Layer, and Data Layer for an Environmental Impact Analytics System.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f7faf8; }
+      .title { font: 700 38px Arial, Helvetica, sans-serif; fill: #17352b; }
+      .subtitle { font: 400 18px Arial, Helvetica, sans-serif; fill: #4d655d; }
+      .tier-title { font: 700 25px Arial, Helvetica, sans-serif; fill: #12342a; }
+      .tier-note { font: 400 15px Arial, Helvetica, sans-serif; fill: #52645d; }
+      .box-title { font: 700 18px Arial, Helvetica, sans-serif; fill: #17352b; }
+      .box-text { font: 400 14px Arial, Helvetica, sans-serif; fill: #40524b; }
+      .small { font: 400 13px Arial, Helvetica, sans-serif; fill: #53665f; }
+      .layer { stroke: #c9d7d0; stroke-width: 2; rx: 22; }
+      .module { fill: #ffffff; stroke: #cbd8d2; stroke-width: 2; rx: 14; }
+      .module-green { fill: #ffffff; stroke: #8cc5a5; stroke-width: 2; rx: 14; }
+      .icon { fill: none; stroke: #2d6f58; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+      .arrow { fill: none; stroke: #2d6f58; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrowhead); }
+      .return-arrow { fill: none; stroke: #7a948a; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 7 8; marker-end: url(#returnhead); }
+      .db { fill: #ffffff; stroke: #2d6f58; stroke-width: 3; }
+      .chip { fill: #e8f4ee; stroke: #b8d6c8; stroke-width: 1.5; rx: 12; }
+    </style>
+    <marker id="arrowhead" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#2d6f58"/>
+    </marker>
+    <marker id="returnhead" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#7a948a"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1400" height="850"/>
+  <text class="title" x="700" y="62" text-anchor="middle">Three-Tier System Architecture</text>
+  <text class="subtitle" x="700" y="94" text-anchor="middle">Environmental Impact Analytics System</text>
+
+  <!-- Presentation Layer -->
+  <rect class="layer" x="90" y="125" width="1220" height="180" fill="#eef7f1"/>
+  <text class="tier-title" x="125" y="166">Presentation Layer</text>
+  <text class="tier-note" x="125" y="192">User-facing portals and dashboards for interaction with the system</text>
+
+  <rect class="module" x="450" y="155" width="170" height="105"/>
+  <path class="icon" d="M492 191h86v45h-86z M503 248h64 M526 236v12"/>
+  <text class="box-title" x="535" y="286" text-anchor="middle">Web Browser</text>
+
+  <rect class="module" x="645" y="155" width="170" height="105"/>
+  <path class="icon" d="M692 188h76v52h-76z M706 204h20 M706 219h48 M706 233h32"/>
+  <text class="box-title" x="730" y="286" text-anchor="middle">Admin Dashboard</text>
+
+  <rect class="module" x="840" y="155" width="170" height="105"/>
+  <path class="icon" d="M887 241v-47l38-24 38 24v47 M902 241v-33h46v33"/>
+  <text class="box-title" x="925" y="286" text-anchor="middle">Citizen Portal</text>
+
+  <!-- Application Layer -->
+  <rect class="layer" x="90" y="365" width="1220" height="225" fill="#f1f8fb"/>
+  <text class="tier-title" x="125" y="405">Application Layer</text>
+  <text class="tier-note" x="125" y="431">Spring Boot services handle business logic, validation, security, and API responses</text>
+
+  <rect class="module-green" x="260" y="455" width="190" height="88"/>
+  <path class="icon" d="M304 493h40 M304 514h40 M364 493h40 M364 514h40"/>
+  <text class="box-title" x="355" y="572" text-anchor="middle">Spring Boot REST APIs</text>
+
+  <rect class="module" x="480" y="455" width="190" height="88"/>
+  <path class="icon" d="M545 500a30 30 0 1 0 60 0a30 30 0 1 0-60 0 M575 502v-22 M575 502l16 12"/>
+  <text class="box-title" x="575" y="572" text-anchor="middle">Authentication</text>
+
+  <rect class="module" x="700" y="455" width="190" height="88"/>
+  <path class="icon" d="M754 519c13-38 30-53 55-65c-4 29-17 55-55 65z M754 519c18-10 36-22 55-65"/>
+  <text class="box-title" x="795" y="572" text-anchor="middle">Carbon Entry Service</text>
+
+  <rect class="module" x="920" y="455" width="190" height="88"/>
+  <path class="icon" d="M978 482h74v45h-50l-24 18v-18z M995 498h38 M995 512h27"/>
+  <text class="box-title" x="1015" y="572" text-anchor="middle">Complaint Service</text>
+
+  <rect class="chip" x="335" y="520" width="160" height="36"/>
+  <text class="small" x="415" y="543" text-anchor="middle">Notification Service</text>
+  <rect class="chip" x="535" y="520" width="195" height="36"/>
+  <text class="small" x="632" y="543" text-anchor="middle">Analytics &amp; Reporting</text>
+  <rect class="chip" x="770" y="520" width="185" height="36"/>
+  <text class="small" x="862" y="543" text-anchor="middle">Zone Management</text>
+
+  <!-- Data Layer -->
+  <rect class="layer" x="90" y="650" width="1220" height="150" fill="#fff8ee"/>
+  <text class="tier-title" x="125" y="690">Data Layer</text>
+  <text class="tier-note" x="125" y="716">MySQL database managed through Spring Data JPA / Hibernate</text>
+
+  <ellipse class="db" cx="375" cy="705" rx="82" ry="24"/>
+  <path class="db" d="M293 705v62c0 13 37 24 82 24s82-11 82-24v-62"/>
+  <path class="db" d="M293 736c0 13 37 24 82 24s82-11 82-24"/>
+  <text class="box-title" x="375" y="823" text-anchor="middle">MySQL Database</text>
+
+  <rect class="module" x="540" y="685" width="120" height="48"/>
+  <text class="box-text" x="600" y="714" text-anchor="middle">User Data</text>
+  <rect class="module" x="675" y="685" width="140" height="48"/>
+  <text class="box-text" x="745" y="714" text-anchor="middle">Carbon Entries</text>
+  <rect class="module" x="830" y="685" width="125" height="48"/>
+  <text class="box-text" x="892" y="714" text-anchor="middle">Complaints</text>
+  <rect class="module" x="970" y="685" width="145" height="48"/>
+  <text class="box-text" x="1042" y="714" text-anchor="middle">Notifications</text>
+  <rect class="module" x="590" y="745" width="110" height="42"/>
+  <text class="box-text" x="645" y="771" text-anchor="middle">Zones</text>
+  <rect class="module" x="720" y="745" width="190" height="42"/>
+  <text class="box-text" x="815" y="771" text-anchor="middle">System Transactions</text>
+  <rect class="module" x="930" y="745" width="165" height="42"/>
+  <text class="box-text" x="1012" y="771" text-anchor="middle">JPA / Hibernate</text>
+
+  <!-- Flow Arrows -->
+  <path class="arrow" d="M700 313v42"/>
+  <text class="small" x="724" y="341">Requests</text>
+  <path class="return-arrow" d="M650 358v-42"/>
+  <text class="small" x="535" y="341">Responses</text>
+
+  <path class="arrow" d="M700 600v40"/>
+  <text class="small" x="724" y="626">CRUD / Queries</text>
+  <path class="return-arrow" d="M650 642v-40"/>
+  <text class="small" x="530" y="626">Entities / Results</text>
+</svg>
