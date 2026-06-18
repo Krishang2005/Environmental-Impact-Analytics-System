@@ -5,6 +5,7 @@ import { adminApi } from '../../api/adminApi'
 import { useFetch } from '../../hooks/useFetch'
 import { useAuth } from '../../context/AuthContext'
 import { PageLoader, ErrorState, EmptyState, Modal, Spinner } from '../../components/ui'
+import { IdentityAvatar } from '../../components/ui/UserAvatar'
 import { formatCarbonShort, formatDate, getActivityLabel, getErrorMessage } from '../../utils/helpers'
 
 const defaultForm = {
@@ -22,14 +23,12 @@ const defaultForm = {
 export default function AllUsers() {
   const { token, isAdmin } = useAuth()
   const isSessionReady = Boolean(token && isAdmin)
-  const { data: users, loading, error, refetch } = useFetch(adminApi.getAllUsers, [], { enabled: isSessionReady })
-  const { data: zones } = useFetch(adminApi.getZones, [], { enabled: isSessionReady })
+  const { data: users, loading, error } = useFetch(adminApi.getAllUsers, [], { enabled: isSessionReady })
   const [search, setSearch] = useState('')
   const [streakModalOpen, setStreakModalOpen] = useState(false)
   const [streakLoading, setStreakLoading] = useState(false)
   const [streakSaving, setStreakSaving] = useState(false)
   const [selectedUser, setSelectedUser] = useState(null)
-  const [zoneSavingUserId, setZoneSavingUserId] = useState(null)
   const [streakProfile, setStreakProfile] = useState(null)
   const [streakForm, setStreakForm] = useState(defaultForm)
 
@@ -38,7 +37,6 @@ export default function AllUsers() {
   if (error) return <ErrorState message={typeof error === 'string' ? error : 'Could not load users'} />
 
   const list = Array.isArray(users) ? users : []
-  const zoneList = Array.isArray(zones) ? zones : []
 
   const filtered = list.filter((u) => {
     if (!search) return true
@@ -123,20 +121,6 @@ export default function AllUsers() {
     }
   }
 
-  const handleZoneAssign = async (user, zoneId) => {
-    if (!zoneId) return
-    setZoneSavingUserId(user.id)
-    try {
-      await adminApi.assignUserZone(user.id, zoneId)
-      toast.success('User zone assigned')
-      await refetch()
-    } catch (err) {
-      toast.error(getErrorMessage(err))
-    } finally {
-      setZoneSavingUserId(null)
-    }
-  }
-
   return (
     <div className="space-y-5 animate-slide-up">
       <div className="page-header flex items-start justify-between">
@@ -191,9 +175,7 @@ export default function AllUsers() {
                   <tr key={u.id || i}>
                     <td>
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-700 to-brand-900 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-                          {name[0]?.toUpperCase()}
-                        </div>
+                        <IdentityAvatar identity={email !== '-' ? email : name} size="md" className="flex-shrink-0" />
                         <span className="font-medium text-white">{name}</span>
                       </div>
                     </td>
@@ -216,17 +198,6 @@ export default function AllUsers() {
                       ) : (
                         <span className="badge-slate">Unassigned</span>
                       )}
-                      <select
-                        className="input-field mt-2 text-xs"
-                        defaultValue=""
-                        disabled={zoneSavingUserId === u.id}
-                        onChange={(event) => handleZoneAssign(u, event.target.value)}
-                      >
-                        <option value="">Assign zone</option>
-                        {zoneList.map((zoneItem) => (
-                          <option key={zoneItem.id} value={zoneItem.id}>{zoneItem.name}</option>
-                        ))}
-                      </select>
                     </td>
                     <td>
                       <div className="min-w-[190px]">

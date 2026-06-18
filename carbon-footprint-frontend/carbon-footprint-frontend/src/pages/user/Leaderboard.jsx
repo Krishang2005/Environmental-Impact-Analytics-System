@@ -3,6 +3,7 @@ import { Trophy, Medal, Crown } from 'lucide-react'
 import { userApi } from '../../api/userApi'
 import { useFetch } from '../../hooks/useFetch'
 import { PageLoader, ErrorState } from '../../components/ui'
+import { IdentityAvatar } from '../../components/ui/UserAvatar'
 import { formatCarbonShort, MONTHS } from '../../utils/helpers'
 
 const rankIcon = (rank) => {
@@ -102,9 +103,7 @@ export default function Leaderboard() {
                   </td>
                   <td>
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-700 to-brand-900 flex items-center justify-center text-xs font-semibold text-white flex-shrink-0">
-                        {entry.name?.[0]?.toUpperCase()}
-                      </div>
+                      <IdentityAvatar identity={entry.userId || entry.name} size="sm" className="flex-shrink-0" />
                       <span className={entry.currentUser ? 'text-brand-300 font-semibold' : 'text-white'}>
                         {entry.name}
                         {entry.currentUser && <span className="ml-1.5 text-[10px] text-brand-500">(you)</span>}

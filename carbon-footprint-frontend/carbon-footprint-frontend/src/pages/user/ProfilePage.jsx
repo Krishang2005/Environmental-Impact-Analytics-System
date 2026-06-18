@@ -3,10 +3,11 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast from 'react-hot-toast'
-import { User, Mail, Lock, Shield, Building2, MapPin } from 'lucide-react'
+import { Check, User, Mail, Lock, Shield, Building2, MapPin } from 'lucide-react'
 import { authApi } from '../../api/authApi'
 import { useAuth } from '../../context/AuthContext'
 import { Spinner, SectionHeader } from '../../components/ui'
+import { AvatarPortrait, UserAvatar, avatarOptions, useSelectedAvatar } from '../../components/ui/UserAvatar'
 import { getErrorMessage } from '../../utils/helpers'
 
 const pwdSchema = z.object({
@@ -21,6 +22,7 @@ const pwdSchema = z.object({
 export default function ProfilePage() {
   const { user, isAdmin, refreshProfile } = useAuth()
   const [pwdLoading, setPwdLoading] = useState(false)
+  const { avatarId, setSelectedAvatar } = useSelectedAvatar(user, isAdmin)
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm({
     resolver: zodResolver(pwdSchema),
@@ -46,6 +48,11 @@ export default function ProfilePage() {
     }
   }
 
+  const selectAvatar = (nextAvatarId) => {
+    setSelectedAvatar(nextAvatarId)
+    toast.success('Avatar updated')
+  }
+
   return (
     <div className="space-y-6 animate-slide-up max-w-3xl">
       <div className="page-header">
@@ -56,9 +63,7 @@ export default function ProfilePage() {
       <div className="glass-card p-6">
         <SectionHeader title="Account Information" />
         <div className="flex items-center gap-5 mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 flex items-center justify-center text-white text-2xl font-bold shadow-glow">
-            {user?.name?.[0]?.toUpperCase() || 'U'}
-          </div>
+          <UserAvatar user={user} isAdmin={isAdmin} size="lg" />
           <div>
             <h2 className="text-lg font-semibold text-white">{user?.name || 'User'}</h2>
             <p className="text-sm text-slate-400">{user?.email || 'No email available'}</p>
@@ -67,6 +72,41 @@ export default function ProfilePage() {
             }`}>
               {isAdmin ? 'Administrator' : 'Standard User'}
             </span>
+          </div>
+        </div>
+
+        <div className="mb-6 rounded-2xl border border-surface-500/20 bg-surface-700/25 p-4">
+          <div className="mb-3">
+            <p className="text-sm font-semibold text-white">Choose avatar</p>
+            <p className="text-xs text-slate-500">Pick an icon for your profile.</p>
+          </div>
+          <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
+            {avatarOptions.map((option) => {
+              const selected = avatarId === option.id
+
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  title={option.label}
+                  aria-label={`Choose ${option.label} avatar`}
+                  aria-pressed={selected}
+                  onClick={() => selectAvatar(option.id)}
+                  className={`relative h-16 w-16 overflow-hidden rounded-full border bg-slate-900 transition ${
+                    selected
+                      ? 'border-white shadow-[0_0_22px_rgba(56,189,248,0.45)] ring-2 ring-cyan-300/70'
+                      : 'border-white/10 opacity-80 hover:opacity-100 hover:border-white/35'
+                  }`}
+                >
+                  <AvatarPortrait avatar={option} className="h-full w-full" />
+                  {selected && (
+                    <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-cyan-300 text-slate-950">
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                    </span>
+                  )}
+                </button>
+              )
+            })}
           </div>
         </div>
 

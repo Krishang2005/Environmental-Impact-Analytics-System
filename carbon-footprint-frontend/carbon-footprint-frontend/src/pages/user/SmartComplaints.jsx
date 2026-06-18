@@ -47,8 +47,8 @@ const REPORT_MODES = {
 }
 
 const MAX_EVIDENCE_DATA_URL_LENGTH = 2_500_000
-const MAX_PHOTO_UPLOAD_BYTES = 5 * 1024 * 1024
-const MAX_VIDEO_UPLOAD_BYTES = 20 * 1024 * 1024
+const MAX_PHOTO_UPLOAD_BYTES = 10 * 1024 * 1024
+const MAX_VIDEO_UPLOAD_BYTES = 30 * 1024 * 1024
 
 function formatScore(value) {
   return `${Math.round(Number(value || 0))}/100`
@@ -390,7 +390,7 @@ export default function SmartComplaints() {
       return
     }
     if (isFileOverLimit(file, MAX_VIDEO_UPLOAD_BYTES)) {
-      toast.error('Video is too large. Please upload a video up to 20 MB.')
+      toast.error('Video is too large. Please upload a video up to 30 MB.')
       event.target.value = ''
       return
     }
@@ -449,7 +449,7 @@ export default function SmartComplaints() {
       return
     }
     if (isFileOverLimit(file, MAX_PHOTO_UPLOAD_BYTES)) {
-      toast.error('Photo is too large. Please upload an image up to 5 MB.')
+      toast.error('Photo is too large. Please upload an image up to 10 MB.')
       event.target.value = ''
       return
     }

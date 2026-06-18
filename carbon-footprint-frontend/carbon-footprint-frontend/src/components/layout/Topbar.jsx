@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Bell, CheckCheck, ChevronDown, LogOut, Menu, Settings, User, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
+import { UserAvatar } from '../ui/UserAvatar'
 import { userApi } from '../../api/userApi'
 import { formatDateTime } from '../../utils/helpers'
 
@@ -165,9 +166,7 @@ export default function Topbar({ onMenuClick, title }) {
             }}
             className="flex items-center gap-2 rounded-xl border border-slate-500/25 bg-slate-900/80 p-1.5 pl-2 transition hover:border-cyan-200/30"
           >
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400/45 to-indigo-500/45 text-xs font-semibold text-white">
-              {user?.name?.[0]?.toUpperCase() || 'U'}
-            </div>
+            <UserAvatar user={user} isAdmin={isAdmin} size="sm" />
             <span className="hidden max-w-[110px] truncate text-sm text-slate-200 sm:block">{user?.name}</span>
             <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
           </button>

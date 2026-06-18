@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
+import { UserAvatar } from '../ui/UserAvatar'
 import {
   LayoutDashboard, Leaf, ListOrdered, FileBarChart2,
   User, LogOut, Users, AlertTriangle, Map, Download,
@@ -66,9 +67,7 @@ export default function Sidebar({ onClose }) {
 
         <div className="border-b border-slate-500/25 px-4 py-4">
           <div className="flex items-center gap-3 rounded-2xl border border-slate-500/30 bg-slate-900/70 p-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400/35 to-indigo-500/35 text-sm font-semibold text-white">
-              {user?.name?.[0]?.toUpperCase() || 'U'}
-            </div>
+            <UserAvatar user={user} isAdmin={isAdmin} size="md" />
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-white">{user?.name || 'User'}</p>
               <p className="truncate text-[11px] text-slate-400">{user?.email}</p>
