@@ -1,11 +1,17 @@
 package com.bca.carbonfootprint.config;
 
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @Configuration
+@ConditionalOnProperty(
+        name = "app.schema-compatibility.enabled",
+        havingValue = "true",
+        matchIfMissing = true
+)
 public class SchemaCompatibilityInitializer {
 
     @Bean
