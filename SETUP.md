@@ -7,6 +7,7 @@ This repo now works on this laptop with:
 - backend roles auto-seeded on first startup
 - backend zones auto-seeded on first startup
 - frontend reset-password route restored
+- YOLO AI microservice added for garbage and vehicle-smoke detection
 
 ## Current Status
 
@@ -20,6 +21,49 @@ Still missing on this laptop:
 
 - `node` / `npm` is not on `PATH`
 - `git` is not on `PATH`
+
+## AI Detection Service
+
+Path:
+
+- `ai-service`
+
+This service uses YOLO for:
+
+- garbage / waste detection
+- vehicle smoke detection
+
+It does not read number plates. Plate OCR remains handled by Tesseract through the existing browser OCR and Spring Boot Tess4J fallback.
+
+Required model files:
+
+```text
+ai-service/models/garbage_yolo.pt
+ai-service/models/vehicle_smoke_yolo.pt
+```
+
+Or provide custom paths:
+
+```powershell
+$env:GARBAGE_MODEL_PATH="D:\models\garbage_yolo.pt"
+$env:VEHICLE_SMOKE_MODEL_PATH="D:\models\vehicle_smoke_yolo.pt"
+```
+
+Run AI service:
+
+```powershell
+cd ai-service
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8001
+```
+
+Health check:
+
+```text
+http://localhost:8001/health
+```
 
 ## Backend
 
@@ -96,6 +140,7 @@ Recommended `.env`:
 ```env
 VITE_API_BASE_URL=
 VITE_BACKEND_PROXY_TARGET=http://localhost:8080
+VITE_AI_API_BASE_URL=http://localhost:8001
 VITE_APP_NAME=CarbonTrack
 VITE_APP_VERSION=1.0.0
 ```

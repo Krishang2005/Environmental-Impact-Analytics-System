@@ -242,13 +242,6 @@ public class CommunityController {
             @PathVariable Long id,
             @RequestParam(defaultValue = "24") int deadlineHours,
             Principal principal) {
-        if (bbmpComplaintEmail == null || bbmpComplaintEmail.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "BBMP complaint email is not configured. Set BBMP_COMPLAINT_EMAIL or app.bbmp.complaint-email."
-            );
-        }
-
         User admin = getLoggedUser(principal);
         EnvironmentalIssue issue = environmentalIssueRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
@@ -265,21 +258,30 @@ public class CommunityController {
         }
 
         EnvironmentalIssue saved = environmentalIssueRepository.save(issue);
-        String note = "Escalated to BBMP at " + bbmpComplaintEmail
-                + ". Requested response by " + deadline
-                + ". Admin must verify field action before marking action taken.";
 
-        try {
-            emailService.sendEmissionAlertEmail(
-                    bbmpComplaintEmail,
-                    "BBMP Escalation: Complaint #" + saved.getId() + " - " + saved.getTitle(),
-                    buildBbmpEscalationEmail(saved, admin, deadline)
-            );
-        } catch (Exception ex) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_GATEWAY,
-                    "Could not send BBMP escalation email: " + ex.getMessage()
-            );
+        boolean emailConfigured = bbmpComplaintEmail != null && !bbmpComplaintEmail.isBlank();
+        String note;
+
+        if (emailConfigured) {
+            note = "Escalated to BBMP at " + bbmpComplaintEmail
+                    + ". Requested response by " + deadline
+                    + ". Admin must verify field action before marking action taken.";
+
+            try {
+                emailService.sendEmissionAlertEmail(
+                        bbmpComplaintEmail,
+                        "BBMP Escalation: Complaint #" + saved.getId() + " - " + saved.getTitle(),
+                        buildBbmpEscalationEmail(saved, admin, deadline)
+                );
+            } catch (Exception ex) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY,
+                        "Could not send BBMP escalation email: " + ex.getMessage()
+                );
+            }
+        } else {
+            note = "Marked for BBMP escalation with a " + deadlineHours
+                    + "-hour response target. BBMP email is not configured, so no email was sent.";
         }
 
         createHistory(saved, previousStatus, nextStatus, note, null, admin.getName());

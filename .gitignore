@@ -4,3 +4,7 @@ __pycache__/
 *.pyc 
 carbon-footprint-frontend/carbon-footprint-frontend/dist/
 *.zip
+~$*.pptx
+ai-service/.venv/
+ai-service/*.pt
+ai-service/models/*.pt

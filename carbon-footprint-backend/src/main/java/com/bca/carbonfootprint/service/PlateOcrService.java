@@ -69,6 +69,6 @@ public class PlateOcrService {
         }
         String normalized = rawText.toUpperCase().replaceAll("[^A-Z0-9]", "");
         Matcher matcher = INDIAN_PLATE_PATTERN.matcher(normalized);
-        return matcher.find() ? matcher.group() : normalized;
+        return matcher.find() ? matcher.group() : "";
     }
 }

@@ -8,8 +8,8 @@ function ensureBrowser() {
 export function normalizePlateText(value) {
   if (!value) return ''
   const cleaned = value.toUpperCase().replace(/[^A-Z0-9]/g, '')
-  const match = cleaned.match(/[A-Z]{2}\d{1,2}[A-Z]{0,3}\d{3,4}/)
-  return match?.[0] || cleaned.slice(0, 12)
+  const match = cleaned.match(/[A-Z]{2}\d{1,2}[A-Z]{1,3}\d{4}/)
+  return match?.[0] || ''
 }
 
 function loadTesseractScript() {

@@ -17,11 +17,10 @@ import {
 import { SectionHeader, Badge } from '../../components/ui'
 import { communityApi } from '../../api/communityApi'
 import { ocrApi } from '../../api/ocrApi'
+import { aiDetectionApi } from '../../api/aiDetectionApi'
 import { useAuth } from '../../context/AuthContext'
 import { formatDateTime, getErrorMessage } from '../../utils/helpers'
 import {
-  analyzeImageData,
-  analyzeVideoFrame,
   buildComplaintDraft,
   calculateConfidenceScore,
   combineFrameAnalyses,
@@ -66,6 +65,19 @@ function createEvidenceDataUrl(canvas, initialQuality = 0.72) {
   return dataUrl
 }
 
+function normalizeAiDetectionResult(result, mode, durationSeconds = 0) {
+  return {
+    ...result,
+    mode,
+    mediaDurationSeconds: durationSeconds,
+    frameSampleCount: result.frameSampleCount || 1,
+    rollingAverageScore: result.rollingAverageScore ?? result.aiScore ?? 0,
+    detectionModel: result.detectionModel || 'YOLO FastAPI detector',
+    onDeviceInference: false,
+    detections: result.detections || [],
+  }
+}
+
 function isFileOverLimit(file, maxBytes) {
   return file.size > maxBytes
 }
@@ -75,11 +87,11 @@ export default function SmartComplaints() {
   const fileInputRef = useRef(null)
   const photoInputRef = useRef(null)
   const videoRef = useRef(null)
-  const analysisCanvasRef = useRef(null)
   const snapshotCanvasRef = useRef(null)
   const streamRef = useRef(null)
   const analysisIntervalRef = useRef(null)
   const analysisStartedAtRef = useRef(null)
+  const analysisRequestInFlightRef = useRef(false)
   const cancelAnalysisRef = useRef(false)
   const uploadedObjectUrlRef = useRef('')
   const bestFrameScoreRef = useRef(0)
@@ -261,37 +273,39 @@ export default function SmartComplaints() {
     }
   }
 
+  const analyzeEvidenceDataUrl = async (imageDataUrl, durationSeconds = 0) => {
+    const mode = reportMode === 'GARBAGE' ? 'GARBAGE' : 'VEHICLE_EMISSION'
+    const response = await aiDetectionApi.detectImage({
+      imageDataUrl,
+      mode,
+      durationSeconds,
+    })
+    return normalizeAiDetectionResult(response.data, mode, durationSeconds)
+  }
+
   const analyzeUploadedPhotoFile = (file, objectUrl) => new Promise((resolve, reject) => {
     const image = new Image()
 
-    image.onload = () => {
-      const canvas = analysisCanvasRef.current
+    image.onload = async () => {
       const snapshotCanvas = snapshotCanvasRef.current
-      const context = canvas?.getContext('2d', { willReadFrequently: true })
       const snapshotContext = snapshotCanvas?.getContext('2d')
 
-      if (!canvas || !snapshotCanvas || !context || !snapshotContext) {
+      if (!snapshotCanvas || !snapshotContext) {
         reject(new Error('Photo analyzer is not ready yet.'))
         return
       }
 
-      canvas.width = 224
-      canvas.height = 126
-      context.drawImage(image, 0, 0, canvas.width, canvas.height)
-      const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
-      const result = analyzeImageData(
-        imageData,
-        reportMode === 'GARBAGE' ? 'GARBAGE' : 'VEHICLE_EMISSION',
-      )
-
       snapshotCanvas.width = 640
       snapshotCanvas.height = 360
       snapshotContext.drawImage(image, 0, 0, snapshotCanvas.width, snapshotCanvas.height)
+      const evidenceDataUrl = createEvidenceDataUrl(snapshotCanvas, 0.72)
 
-      resolve({
-        result,
-        evidenceDataUrl: createEvidenceDataUrl(snapshotCanvas, 0.72),
-      })
+      try {
+        const result = await analyzeEvidenceDataUrl(evidenceDataUrl, 0)
+        resolve({ result, evidenceDataUrl })
+      } catch (error) {
+        reject(error)
+      }
     }
 
     image.onerror = () => reject(new Error('Could not read the selected photo.'))
@@ -503,6 +517,7 @@ export default function SmartComplaints() {
 
   const stopAnalysis = () => {
     cancelAnalysisRef.current = true
+    analysisRequestInFlightRef.current = false
     if (analysisIntervalRef.current) {
       clearInterval(analysisIntervalRef.current)
       analysisIntervalRef.current = null
@@ -547,7 +562,7 @@ export default function SmartComplaints() {
           toast.success(`Plate detected: ${detectedPlate}`)
         }
       } else {
-        setOcrNotice('OCR ran, but the plate text was unclear. You can still type it manually.')
+        setOcrNotice('OCR ran, but a valid plate number was not clear. You can still type it manually.')
         if (!silent) {
           toast.error('Plate text was unclear. Try another evidence frame.')
         }
@@ -593,11 +608,10 @@ export default function SmartComplaints() {
           : Math.min(safeDurationSeconds - 0.05, (index / (sampleCount - 1)) * safeDurationSeconds)
 
         await seekVideoTo(videoRef.current, sampleTime)
-        const frameResult = analyzeVideoFrame(
-          videoRef.current,
-          analysisCanvasRef.current,
-          reportMode === 'GARBAGE' ? 'GARBAGE' : 'VEHICLE_EMISSION',
-        )
+        const snapshot = captureEvidenceFrame()
+        if (!snapshot) continue
+
+        const frameResult = await analyzeEvidenceDataUrl(snapshot, safeDurationSeconds)
 
         if (!frameResult) continue
 
@@ -609,11 +623,8 @@ export default function SmartComplaints() {
         setAnalysisProgressPct(Math.round(((index + 1) / sampleCount) * 100))
 
         if ((frameResult.aiScore || 0) >= bestScore) {
-          const snapshot = captureEvidenceFrame()
-          if (snapshot) {
-            bestScore = frameResult.aiScore || 0
-            bestSnapshot = snapshot
-          }
+          bestScore = frameResult.aiScore || 0
+          bestSnapshot = snapshot
         }
       }
 
@@ -652,24 +663,34 @@ export default function SmartComplaints() {
     setAnalysisDurationSeconds(0)
     analysisStartedAtRef.current = Date.now()
 
-    analysisIntervalRef.current = setInterval(() => {
-      const result = analyzeVideoFrame(
-        videoRef.current,
-        analysisCanvasRef.current,
-        reportMode === 'GARBAGE' ? 'GARBAGE' : 'VEHICLE_EMISSION',
-      )
-      if (!result) return
+    analysisIntervalRef.current = setInterval(async () => {
+      if (analysisRequestInFlightRef.current) return
+
+      const durationSeconds = Math.round(((Date.now() - analysisStartedAtRef.current) / 1000) * 10) / 10
+      const snapshot = captureEvidenceFrame()
+      if (!snapshot) return
+
+      analysisRequestInFlightRef.current = true
+      let result = null
+      try {
+        result = await analyzeEvidenceDataUrl(snapshot, durationSeconds)
+      } catch (error) {
+        toast.error(getErrorMessage(error))
+        stopAnalysis()
+        return
+      } finally {
+        analysisRequestInFlightRef.current = false
+      }
+
+      if (!result || cancelAnalysisRef.current) return
 
       setCurrentFrameAnalysis(result)
       setFrameAnalyses((previous) => [...previous.slice(-29), result])
-      setAnalysisDurationSeconds(Math.round(((Date.now() - analysisStartedAtRef.current) / 1000) * 10) / 10)
+      setAnalysisDurationSeconds(durationSeconds)
 
       if ((result.aiScore || 0) >= bestFrameScoreRef.current) {
-        const snapshot = captureEvidenceFrame()
-        if (snapshot) {
-          bestFrameScoreRef.current = result.aiScore || 0
-          setEvidenceImageUrl(snapshot)
-        }
+        bestFrameScoreRef.current = result.aiScore || 0
+        setEvidenceImageUrl(snapshot)
       }
     }, reportMode === 'GARBAGE' ? 900 : 650)
   }
@@ -919,7 +940,6 @@ export default function SmartComplaints() {
             className="hidden"
           />
 
-          <canvas ref={analysisCanvasRef} className="hidden" />
           <canvas ref={snapshotCanvasRef} className="hidden" />
 
           {uploadedMedia && (
@@ -1072,7 +1092,7 @@ export default function SmartComplaints() {
               </div>
               {reportMode === 'VEHICLE_EMISSION' && (
                 <div>
-                  <label className="label">Plate number (optional)</label>
+                  <label className="label">Plate number / manual entry (optional)</label>
                   <input
                     type="text"
                     value={formState.vehiclePlateNumber}
@@ -1081,7 +1101,7 @@ export default function SmartComplaints() {
                       vehiclePlateNumber: event.target.value.toUpperCase(),
                     }))}
                     className="input-field"
-                    placeholder="Manual OCR fallback"
+                    placeholder="e.g. KA03MK5124"
                   />
                   <div className="mt-2 flex flex-wrap gap-2">
                     <button
@@ -1201,16 +1221,16 @@ export default function SmartComplaints() {
       </div>
 
       <div className="glass-card p-5">
-        <SectionHeader title="Implementation Note" subtitle="Current mobile-friendly analyzer path" />
+        <SectionHeader title="Implementation Note" subtitle="YOLO microservice analyzer path" />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           <div className="rounded-2xl border border-surface-500/20 bg-surface-700/30 p-4">
             <div className="flex items-center gap-2 text-white">
               <ShieldAlert className="w-4 h-4 text-cyan-300" />
-              <p className="text-sm font-semibold">On-device first</p>
+              <p className="text-sm font-semibold">YOLO microservice</p>
             </div>
             <p className="mt-2 text-xs leading-relaxed text-slate-400">
-              The UI performs lightweight frame analysis directly in the browser so the complaint can be assembled
-              without depending on a heavy inference server.
+              The UI sends evidence frames to the FastAPI AI service, where trained YOLO models detect garbage and
+              vehicle smoke before the complaint is assembled.
             </p>
           </div>
           <div className="rounded-2xl border border-surface-500/20 bg-surface-700/30 p-4">
@@ -1220,7 +1240,7 @@ export default function SmartComplaints() {
             </div>
             <p className="mt-2 text-xs leading-relaxed text-slate-400">
               The same complaint flow now supports either a live camera stream or a saved uploaded video, both sampled
-              frame by frame for smoke severity estimation.
+              frame by frame through the YOLO service for smoke severity estimation.
             </p>
           </div>
           <div className="rounded-2xl border border-surface-500/20 bg-surface-700/30 p-4">
@@ -1229,8 +1249,8 @@ export default function SmartComplaints() {
               <p className="text-sm font-semibold">Visual carbon estimate</p>
             </div>
             <p className="mt-2 text-xs leading-relaxed text-slate-400">
-              Vehicle complaints now include an estimated visual carbon release based on smoke severity, vehicle count,
-              and analyzed duration. It is useful for prioritization, not exact emissions accounting.
+              Vehicle complaints include an estimated visual carbon release based on YOLO smoke detections, vehicle
+              count, and analyzed duration. It is useful for prioritization, not exact emissions accounting.
             </p>
           </div>
         </div>

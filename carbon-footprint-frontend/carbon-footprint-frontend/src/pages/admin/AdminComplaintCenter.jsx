@@ -369,7 +369,7 @@ export default function AdminComplaintCenter() {
                     <button
                       type="button"
                       onClick={() => handleStatusUpdate(issue, 'UNDER_REVIEW')}
-                      disabled={updatingId === issue.id || issue.status === 'UNDER_REVIEW'}
+                      disabled={updatingId === issue.id || issue.status !== 'SUBMITTED'}
                       className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-200 transition hover:bg-amber-500/20 disabled:opacity-60"
                     >
                       {updatingId === issue.id ? 'Updating...' : 'Mark in review'}
